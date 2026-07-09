@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#EAF3FB" />
+    <title>Two Homes</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- React + htm (a tiny, sturdy way to build the screens — no in-browser translator needed). -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/htm@3/dist/htm.umd.js"></script>
+
+    <style>
+      :root {
+        --bg-top: #EAF3FB;
+        --bg-bottom: #FBF3E9;
+        --ink: #2E3A59;
+        --ink-soft: #64708C;
+        --card: #FFFFFF;
+        --accent: #6BB0E5;
+        --danger: #E57373;
+        --radius: 22px;
+        --shadow: 0 10px 30px rgba(46, 58, 89, 0.10);
+        --shadow-sm: 0 4px 14px rgba(46, 58, 89, 0.08);
+        font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      html, body, #root { height: 100%; margin: 0; }
+      body {
+        color: var(--ink);
+        background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+        background-attachment: fixed;
+        -webkit-font-smoothing: antialiased;
+      }
+      .app-root { min-height: 100%; display: flex; justify-content: center; }
+      .screen { width: 100%; max-width: 480px; padding: 28px 22px 40px; display: flex; flex-direction: column; gap: 18px; }
+      .screen--center { align-items: center; text-align: center; justify-content: center; min-height: 100vh; }
+      .title { font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: clamp(28px, 8vw, 40px); margin: 0; line-height: 1.05; }
+      .title--sm { font-size: 24px; }
+      .subtitle { margin: 0; color: var(--ink-soft); font-size: 17px; font-weight: 600; }
+      .btn { font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 18px; border: none; border-radius: 999px; padding: 14px 26px; cursor: pointer; transition: transform .12s ease, box-shadow .12s ease, filter .12s ease; }
+      .btn:active { transform: translateY(1px) scale(0.99); }
+      .btn-primary { background: var(--accent); color: #fff; box-shadow: var(--shadow-sm); }
+      .btn-primary:hover { filter: brightness(1.04); }
+      .btn-ghost { background: rgba(46, 58, 89, 0.07); color: var(--ink); }
+      .btn-danger { background: var(--danger); color: #fff; }
+      .btn-big { padding: 18px 34px; font-size: 20px; align-self: center; }
+      .nav { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 10px; gap: 12px; }
+      .cards { display: flex; flex-direction: column; gap: 16px; }
+      @media (min-width: 720px) { .cards { flex-direction: row; } }
+      .card { background: var(--card); border: 3px solid transparent; border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; box-shadow: var(--shadow-sm); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, opacity .18s ease; animation: rise .4s ease both; }
+      .cards .card:nth-child(2) { animation-delay: .07s; }
+      .cards .card:nth-child(3) { animation-delay: .14s; }
+      .card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+      .card--selected { border-color: var(--buddy); transform: translateY(-4px) scale(1.02); box-shadow: var(--shadow); }
+      .card--dim { opacity: .5; transform: scale(0.97); }
+      .card-name { font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 24px; color: var(--buddy); }
+      .card-tag { color: var(--ink-soft); font-weight: 600; font-size: 15px; }
+      .buddy-art { display: grid; place-items: center; }
+      .buddy-art img { width: 100%; height: 100%; object-fit: contain; }
+      .buddy-art--ring { border-radius: 50%; background: #EAF3FB; background: color-mix(in srgb, var(--accent) 16%, white); padding: 14px; box-shadow: var(--shadow-sm); }
+      .buddy-emoji { line-height: 1; }
+      .welcome-buddies { display: flex; gap: 6px; }
+      .speech { background: var(--card); border-radius: 18px; padding: 16px 18px; box-shadow: var(--shadow-sm); max-width: 360px; display: flex; align-items: flex-start; gap: 10px; }
+      .speech p { margin: 0; font-weight: 600; font-size: 17px; line-height: 1.4; text-align: left; }
+      .speech--inline { flex: 1; }
+      .hear { background: none; border: none; font-size: 20px; cursor: pointer; padding: 0; line-height: 1; }
+      .text-input { width: 100%; font-family: 'Nunito', sans-serif; font-size: 18px; font-weight: 600; color: var(--ink); background: var(--card); border: 2px solid rgba(46, 58, 89, 0.12); border-radius: 16px; padding: 14px 16px; }
+      .text-input:focus { outline: none; border-color: var(--accent); }
+      .text-input--sub { font-size: 16px; margin-top: 8px; }
+      .field-label { font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 18px; }
+      .home-block { display: flex; flex-direction: column; margin-bottom: 6px; }
+      .preview { display: grid; place-items: center; padding: 8px; }
+      .swatches { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+      .swatch { width: 48px; height: 48px; border-radius: 50%; border: 3px solid #fff; box-shadow: var(--shadow-sm); cursor: pointer; position: relative; transition: transform .12s ease; }
+      .swatch:hover { transform: scale(1.08); }
+      .swatch--on { outline: 3px solid var(--ink); outline-offset: 2px; }
+      .swatch--more { background: #fff; color: var(--ink-soft); font-size: 26px; display: grid; place-items: center; overflow: hidden; }
+      .swatch--more input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+      .review-row { display: flex; align-items: center; gap: 12px; background: var(--card); border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow-sm); }
+      .review-content { display: flex; align-items: center; gap: 10px; flex: 1; font-weight: 600; font-size: 17px; }
+      .pencil { background: none; border: none; font-size: 20px; cursor: pointer; }
+      .dot { width: 26px; height: 26px; border-radius: 50%; display: inline-block; box-shadow: var(--shadow-sm); }
+      .home-header { display: flex; align-items: center; gap: 12px; }
+      .gear { margin-left: auto; background: none; border: none; font-size: 26px; cursor: pointer; }
+      .hub { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; }
+      .hub-tile { background: var(--card); border: none; border-radius: var(--radius); padding: 26px 14px; display: flex; flex-direction: column; align-items: center; gap: 8px; font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 19px; color: var(--ink); cursor: pointer; box-shadow: var(--shadow-sm); transition: transform .12s ease, box-shadow .12s ease; }
+      .hub-tile:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+      .hub-emoji { font-size: 40px; }
+      .settings-header { display: flex; align-items: center; gap: 12px; }
+      .set-block { display: flex; flex-direction: column; gap: 10px; }
+      .set-label { font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 18px; margin: 6px 0 0; }
+      .buddy-row { display: flex; gap: 12px; }
+      .buddy-pick { flex: 1; background: var(--card); border: 3px solid transparent; border-radius: 16px; padding: 12px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-family: 'Fredoka', sans-serif; font-weight: 600; color: var(--ink); cursor: pointer; box-shadow: var(--shadow-sm); }
+      .buddy-pick--on { border-color: var(--accent); }
+      .confirm { background: var(--card); border-radius: 16px; padding: 16px; box-shadow: var(--shadow-sm); }
+      .confirm p { margin: 0 0 12px; font-weight: 600; }
+      .confirm-row { display: flex; gap: 12px; justify-content: flex-end; }
+      @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+      :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script>
+      const { useState, useCallback, useEffect, useContext, createContext, createElement, StrictMode } = React;
+      const html = htm.bind(createElement);
+
+      /* ---------------- store: the one on-device source of truth ---------------- */
+      const KEY = 'twoHomes.myStuff';
+      const VERSION = 1;
+      const DEFAULT_STUFF = {
+        version: VERSION, onboarded: false, buddy: null, accent: '#6BB0E5', name: '',
+        homes: { home1: { label: '', grownup: '' }, home2: { label: '', grownup: '' } },
+        calendar: {}, holidays: {},
+      };
+      function loadStuff() {
+        try {
+          const raw = localStorage.getItem(KEY);
+          if (!raw) return { ...DEFAULT_STUFF };
+          return migrate(JSON.parse(raw));
+        } catch (e) { return { ...DEFAULT_STUFF }; }
+      }
+      function saveStuff(patch) {
+        const next = { ...loadStuff(), ...patch };
+        try { localStorage.setItem(KEY, JSON.stringify(next)); } catch (e) {}
+        return next;
+      }
+      function setHome(which, fields) {
+        const s = loadStuff();
+        return saveStuff({ homes: { ...s.homes, [which]: { ...s.homes[which], ...fields } } });
+      }
+      function resetStuff() {
+        try { localStorage.removeItem(KEY); } catch (e) {}
+        return { ...DEFAULT_STUFF };
+      }
+      function migrate(data) {
+        if (!data || typeof data !== 'object') return { ...DEFAULT_STUFF };
+        if (!data.version) data = { ...data, version: 1 };
+        return { ...DEFAULT_STUFF, ...data, homes: { ...DEFAULT_STUFF.homes, ...(data.homes || {}) } };
+      }
+
+      /* ---------------- buddies ---------------- */
+      const BUDDIES = [
+        { id: 'shelly', name: 'Shelly', emoji: '🐢', color: '#7FB069',
+          tag: 'She carries her home wherever she goes.',
+          lines: {
+            meet: "Hi, I'm Shelly! I'm so happy it's you. What should I call you?",
+            allset: (n) => 'All set' + (n ? ', ' + n : '') + "! When it's almost time to switch homes, come find me. I'll help you pack — and I'm always here if you want to talk about how you feel.",
+            home: (n) => 'Hi again' + (n ? ', ' + n : '') + ". Take your time — I'm right here.",
+            handoff: (n) => 'Hi' + (n ? ', ' + n : '') + "! Shelly told me you might visit — I'm here now.",
+          } },
+        { id: 'puffy', name: 'Puffy', emoji: '☁️', color: '#9B8FD1',
+          tag: 'Puffy floats over both your homes.',
+          lines: {
+            meet: "Hi there! I'm Puffy. Same sky over both your homes — and now I'm your cloud. What should I call you?",
+            allset: (n) => "You're all set" + (n ? ', ' + n : '') + '! Come float back anytime — to pack, to check your weather, or just to say hi.',
+            home: (n) => 'Hi' + (n ? ', ' + n : '') + "! Same sky today. Glad you're here.",
+            handoff: (n) => 'Hi' + (n ? ', ' + n : '') + "! I'm Puffy — I'll float along with you now.",
+          } },
+        { id: 'pip', name: 'Pip', emoji: '🐦', color: '#E0A458',
+          tag: 'Pip has two cozy nests.',
+          lines: {
+            meet: "Hey! I'm Pip. Two nests, one you, one me — we're a team now. What should I call you?",
+            allset: (n) => 'Ready to fly' + (n ? ', ' + n : '') + "! Whenever it's switch day, I've got you — packing, feelings, all of it.",
+            home: (n) => "Hey, you're back" + (n ? ', ' + n : '') + "! Two nests, one you. Let's go!",
+            handoff: (n) => 'Hey' + (n ? ', ' + n : '') + "! I'm Pip — two nests, one you. Let's fly!",
+          } },
+      ];
+      const getBuddy = (id) => BUDDIES.find((b) => b.id === id) || BUDDIES[0];
+
+      /* ---------------- optional voice ---------------- */
+      function speak(text) {
+        try {
+          if (!('speechSynthesis' in window) || !text) return;
+          const u = new SpeechSynthesisUtterance(text);
+          u.rate = 0.95; u.pitch = 1.1;
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(u);
+        } catch (e) {}
+      }
+
+      /* ---------------- shared state ---------------- */
+      const StuffContext = createContext(null);
+      function StuffProvider({ children }) {
+        const [stuff, setStuff] = useState(loadStuff);
+        const update = useCallback((patch) => setStuff(saveStuff(patch)), []);
+        const refresh = useCallback(() => setStuff(loadStuff()), []);
+        const reset = useCallback(() => setStuff(resetStuff()), []);
+        return html`<${StuffContext.Provider} value=${{ stuff, update, refresh, reset }}>${children}</${StuffContext.Provider}>`;
+      }
+      function useMyStuff() {
+        const ctx = useContext(StuffContext);
+        if (!ctx) throw new Error('useMyStuff must be used inside StuffProvider');
+        return ctx;
+      }
+
+      /* ---------------- little pieces ---------------- */
+      function BuddyArt({ id, size = 160, ring = false }) {
+        const buddy = getBuddy(id);
+        return html`
+          <div className=${'buddy-art' + (ring ? ' buddy-art--ring' : '')} style=${{ width: size, height: size }}>
+            <span className="buddy-emoji" style=${{ fontSize: size * 0.6 }} role="img" aria-label=${buddy.name}>${buddy.emoji}</span>
+          </div>`;
+      }
+      function Nav({ onBack, onNext, nextLabel = 'Next', backLabel = 'Back', showBack = true }) {
+        return html`
+          <nav className="nav">
+            ${showBack
+              ? html`<button className="btn btn-ghost" onClick=${onBack} aria-label=${backLabel}>← ${backLabel}</button>`
+              : html`<span/>`}
+            ${onNext
+              ? html`<button className="btn btn-primary" onClick=${onNext} aria-label=${nextLabel}>${nextLabel} →</button>`
+              : html`<span/>`}
+          </nav>`;
+      }
+
+      /* ---------------- screens ---------------- */
+      function Welcome({ go }) {
+        return html`
+          <main className="screen screen--center">
+            <div className="welcome-buddies">${BUDDIES.map((b) => html`<${BuddyArt} key=${b.id} id=${b.id} size=${84} />`)}</div>
+            <h1 className="title">Two Homes</h1>
+            <p className="subtitle">A calm little place that's just yours.</p>
+            <button className="btn btn-primary btn-big" onClick=${() => go('picker')}>Let's go →</button>
+          </main>`;
+      }
+
+      function Picker({ back, advance, hasBack }) {
+        const { stuff, update } = useMyStuff();
+        const [selected, setSelected] = useState(stuff.buddy);
+        function pick(b) { setSelected(b.id); speak(b.name); }
+        function next() { update({ buddy: selected || 'shelly' }); advance('picker'); }
+        return html`
+          <main className="screen">
+            <h1 className="title">Pick Your Buddy!</h1>
+            <p className="subtitle">You can change anytime. Your buddy is here for you. ♥</p>
+            <div className="cards">
+              ${BUDDIES.map((b) => {
+                const isSel = selected === b.id;
+                const dim = selected && !isSel;
+                return html`
+                  <button key=${b.id} className=${'card' + (isSel ? ' card--selected' : '') + (dim ? ' card--dim' : '')}
+                    style=${{ '--buddy': b.color }} aria-pressed=${isSel} onClick=${() => pick(b)}>
+                    <${BuddyArt} id=${b.id} size=${120} />
+                    <span className="card-name">${b.name}</span>
+                    <span className="card-tag">${b.tag}</span>
+                  </button>`;
+              })}
+            </div>
+            <${Nav} onBack=${back} onNext=${next} showBack=${hasBack} />
+          </main>`;
+      }
+
+      const SWATCHES = ['#6BB0E5', '#F48FB1', '#7FB069', '#9B8FD1', '#E0A458', '#4DB6AC', '#FF8A65', '#BA68C8'];
+
+      function Colors({ back, advance }) {
+        const { stuff, update } = useMyStuff();
+        return html`
+          <main className="screen">
+            <h1 className="title">Make it yours</h1>
+            <p className="subtitle">Pick the colors you love. You can change these whenever you want.</p>
+            <div className="preview"><${BuddyArt} id=${stuff.buddy} size=${140} ring=${true} /></div>
+            <div className="swatches">
+              ${SWATCHES.map((c) => html`
+                <button key=${c} className=${'swatch' + (stuff.accent === c ? ' swatch--on' : '')} style=${{ background: c }}
+                  aria-label="Pick this color" aria-pressed=${stuff.accent === c} onClick=${() => update({ accent: c })} />`)}
+              <label className="swatch swatch--more" aria-label="More colors">+
+                <input type="color" value=${stuff.accent} onChange=${(e) => update({ accent: e.target.value })} />
+              </label>
+            </div>
+            <${Nav} onBack=${back} onNext=${() => advance('colors')} />
+          </main>`;
+      }
+
+      function Meet({ back, advance }) {
+        const { stuff, update } = useMyStuff();
+        const buddy = getBuddy(stuff.buddy);
+        const line = buddy.lines.meet;
+        return html`
+          <main className="screen screen--center">
+            <${BuddyArt} id=${buddy.id} size=${160} ring=${true} />
+            <div className="speech">
+              <p>${line}</p>
+              <button className="hear" onClick=${() => speak(line)} aria-label="Hear it">🔊</button>
+            </div>
+            <input className="text-input" type="text" placeholder="Type your name (or skip)" value=${stuff.name}
+              maxLength=${24} autoComplete="off" onChange=${(e) => update({ name: e.target.value })} />
+            <${Nav} onBack=${back} onNext=${() => advance('meet')} nextLabel=${stuff.name ? 'Next' : 'Skip'} />
+          </main>`;
+      }
+
+      function Homes({ back, advance }) {
+        const { stuff, refresh } = useMyStuff();
+        const buddy = getBuddy(stuff.buddy);
+        function edit(which, field, val) { setHome(which, { [field]: val }); refresh(); }
+        return html`
+          <main className="screen">
+            <h1 className="title">Your two homes</h1>
+            <p className="subtitle">${buddy.name}: “You can call them whatever feels right.”</p>
+            ${['home1', 'home2'].map((h, i) => html`
+              <div className="home-block" key=${h}>
+                <label className="field-label">Home ${i + 1}</label>
+                <input className="text-input" type="text"
+                  placeholder=${i === 0 ? "e.g. Mom's, Grandma's…" : "e.g. Dad's, the beach house…"}
+                  value=${stuff.homes[h].label} maxLength=${30} onChange=${(e) => edit(h, 'label', e.target.value)} />
+                <input className="text-input text-input--sub" type="text" placeholder="Add a grown-up's name (optional)"
+                  value=${stuff.homes[h].grownup} maxLength=${30} onChange=${(e) => edit(h, 'grownup', e.target.value)} />
+              </div>`)}
+            <${Nav} onBack=${back} onNext=${() => advance('homes')} nextLabel="All done" />
+          </main>`;
+      }
+
+      function Row({ children, onEdit }) {
+        return html`
+          <div className="review-row">
+            <div className="review-content">${children}</div>
+            <button className="pencil" onClick=${onEdit} aria-label="Edit this">✏️</button>
+          </div>`;
+      }
+
+      function Review({ go, editStep }) {
+        const { stuff } = useMyStuff();
+        const buddy = getBuddy(stuff.buddy);
+        const h1 = stuff.homes.home1.label || 'Home 1';
+        const h2 = stuff.homes.home2.label || 'Home 2';
+        return html`
+          <main className="screen">
+            <h1 className="title">Here's your setup!</h1>
+            <${Row} onEdit=${() => editStep('picker')}><${BuddyArt} id=${buddy.id} size=${44} /><span>Your buddy: <b>${buddy.name}</b></span></${Row}>
+            <${Row} onEdit=${() => editStep('colors')}><span className="dot" style=${{ background: stuff.accent }}></span><span>Your colors</span></${Row}>
+            <${Row} onEdit=${() => editStep('meet')}><span>Your name: <b>${stuff.name || '—'}</b></span></${Row}>
+            <${Row} onEdit=${() => editStep('homes')}><span>Your homes: <b>${h1}</b> and <b>${h2}</b></span></${Row}>
+            <button className="btn btn-primary btn-big" onClick=${() => go('allset')}>Looks good! →</button>
+          </main>`;
+      }
+
+      function AllSet({ go }) {
+        const { stuff, update } = useMyStuff();
+        const buddy = getBuddy(stuff.buddy);
+        const line = buddy.lines.allset(stuff.name);
+        useEffect(() => { update({ onboarded: true }); }, []);
+        return html`
+          <main className="screen screen--center">
+            <${BuddyArt} id=${buddy.id} size=${160} ring=${true} />
+            <div className="speech">
+              <p>${line}</p>
+              <button className="hear" onClick=${() => speak(line)} aria-label="Hear it">🔊</button>
+            </div>
+            <button className="btn btn-primary btn-big" onClick=${() => go('home')}>Go →</button>
+          </main>`;
+      }
+
+      function Home({ go }) {
+        const { stuff } = useMyStuff();
+        const buddy = getBuddy(stuff.buddy);
+        const line = buddy.lines.home(stuff.name);
+        return html`
+          <main className="screen">
+            <header className="home-header">
+              <${BuddyArt} id=${buddy.id} size=${72} />
+              <div className="speech speech--inline">
+                <p>${line}</p>
+                <button className="hear" onClick=${() => speak(line)} aria-label="Hear it">🔊</button>
+              </div>
+              <button className="gear" onClick=${() => go('settings')} aria-label="Settings">⚙️</button>
+            </header>
+            <div className="hub">
+              <button className="hub-tile" onClick=${() => go('pack')}><span className="hub-emoji">🎒</span><span>Pack</span></button>
+              <button className="hub-tile" onClick=${() => go('calendar')}><span className="hub-emoji">📅</span><span>Calendar</span></button>
+              <button className="hub-tile" onClick=${() => go('feelings')}><span className="hub-emoji">💛</span><span>Feelings</span></button>
+            </div>
+          </main>`;
+      }
+
+      function Settings({ go }) {
+        const { stuff, update, refresh, reset } = useMyStuff();
+        const [confirming, setConfirming] = useState(false);
+        function switchBuddy(b) { if (b.id === stuff.buddy) return; update({ buddy: b.id }); speak(b.lines.handoff(stuff.name)); }
+        function editHome(which, field, val) { setHome(which, { [field]: val }); refresh(); }
+        function doReset() { reset(); setConfirming(false); go('welcome'); }
+        return html`
+          <main className="screen">
+            <header className="settings-header">
+              <button className="btn btn-ghost" onClick=${() => go('home')} aria-label="Back to home">← Home</button>
+              <h1 className="title title--sm">My Stuff</h1>
+            </header>
+            <section className="set-block">
+              <h2 className="set-label">Your buddy</h2>
+              <div className="buddy-row">
+                ${BUDDIES.map((b) => html`
+                  <button key=${b.id} className=${'buddy-pick' + (stuff.buddy === b.id ? ' buddy-pick--on' : '')}
+                    aria-pressed=${stuff.buddy === b.id} onClick=${() => switchBuddy(b)}>
+                    <${BuddyArt} id=${b.id} size=${56} /><span>${b.name}</span>
+                  </button>`)}
+              </div>
+            </section>
+            <section className="set-block">
+              <h2 className="set-label">Your colors</h2>
+              <div className="swatches">
+                ${SWATCHES.map((c) => html`
+                  <button key=${c} className=${'swatch' + (stuff.accent === c ? ' swatch--on' : '')} style=${{ background: c }}
+                    aria-label="Pick this color" onClick=${() => update({ accent: c })} />`)}
+                <label className="swatch swatch--more" aria-label="More colors">+
+                  <input type="color" value=${stuff.accent} onChange=${(e) => update({ accent: e.target.value })} />
+                </label>
+              </div>
+            </section>
+            <section className="set-block">
+              <h2 className="set-label">Your name</h2>
+              <input className="text-input" type="text" value=${stuff.name} maxLength=${24} placeholder="Type your name"
+                onChange=${(e) => update({ name: e.target.value })} />
+            </section>
+            <section className="set-block">
+              <h2 className="set-label">Your homes</h2>
+              ${['home1', 'home2'].map((h, i) => html`
+                <div className="home-block" key=${h}>
+                  <input className="text-input" type="text" value=${stuff.homes[h].label} maxLength=${30}
+                    placeholder=${'Home ' + (i + 1)} onChange=${(e) => editHome(h, 'label', e.target.value)} />
+                  <input className="text-input text-input--sub" type="text" value=${stuff.homes[h].grownup} maxLength=${30}
+                    placeholder="Grown-up (optional)" onChange=${(e) => editHome(h, 'grownup', e.target.value)} />
+                </div>`)}
+            </section>
+            <section className="set-block">
+              ${!confirming
+                ? html`<button className="btn btn-danger" onClick=${() => setConfirming(true)}>Delete everything</button>`
+                : html`
+                  <div className="confirm">
+                    <p>This clears everything saved on this device. It can't be undone.</p>
+                    <div className="confirm-row">
+                      <button className="btn btn-ghost" onClick=${() => setConfirming(false)}>Keep my stuff</button>
+                      <button className="btn btn-danger" onClick=${doReset}>Yes, delete</button>
+                    </div>
+                  </div>`}
+            </section>
+          </main>`;
+      }
+
+      function Placeholder({ title, go }) {
+        const { stuff } = useMyStuff();
+        const buddy = getBuddy(stuff.buddy);
+        return html`
+          <main className="screen screen--center">
+            <${BuddyArt} id=${buddy.id} size=${120} />
+            <h1 className="title">${title}</h1>
+            <p className="subtitle">${buddy.name} is getting this room ready. Coming soon!</p>
+            <button className="btn btn-primary" onClick=${() => go('home')}>← Back home</button>
+          </main>`;
+      }
+
+      /* ---------------- app (flow controller) ---------------- */
+      const ONBOARDING = ['welcome', 'picker', 'colors', 'meet', 'homes', 'review', 'allset'];
+      function App() {
+        const { stuff } = useMyStuff();
+        const [route, setRoute] = useState(stuff.onboarded ? 'home' : 'welcome');
+        const [history, setHistory] = useState([]);
+        const [returnTo, setReturnTo] = useState(null);
+        const go = useCallback((next, opts = {}) => {
+          setHistory((h) => [...h, route]);
+          if (opts.returnTo !== undefined) setReturnTo(opts.returnTo);
+          setRoute(next);
+        }, [route]);
+        const back = useCallback(() => {
+          if (history.length === 0) return;
+          setRoute(history[history.length - 1]);
+          setHistory(history.slice(0, -1));
+        }, [history]);
+        const advance = useCallback((fromRoute) => {
+          if (returnTo === 'review') { setReturnTo(null); go('review'); return; }
+          const i = ONBOARDING.indexOf(fromRoute);
+          if (i >= 0 && i < ONBOARDING.length - 1) go(ONBOARDING[i + 1]);
+        }, [returnTo, go]);
+        const editStep = useCallback((step) => go(step, { returnTo: 'review' }), [go]);
+        const p = { go, back, advance, editStep, hasBack: history.length > 0 };
+        let screen;
+        switch (route) {
+          case 'welcome':  screen = html`<${Welcome} ...${p} />`; break;
+          case 'picker':   screen = html`<${Picker} ...${p} />`; break;
+          case 'colors':   screen = html`<${Colors} ...${p} />`; break;
+          case 'meet':     screen = html`<${Meet} ...${p} />`; break;
+          case 'homes':    screen = html`<${Homes} ...${p} />`; break;
+          case 'review':   screen = html`<${Review} ...${p} />`; break;
+          case 'allset':   screen = html`<${AllSet} ...${p} />`; break;
+          case 'home':     screen = html`<${Home} ...${p} />`; break;
+          case 'settings': screen = html`<${Settings} ...${p} />`; break;
+          case 'calendar': screen = html`<${Placeholder} title="Calendar" ...${p} />`; break;
+          case 'feelings': screen = html`<${Placeholder} title="Feelings" ...${p} />`; break;
+          case 'pack':     screen = html`<${Placeholder} title="Pack" ...${p} />`; break;
+          default:         screen = html`<${Home} ...${p} />`;
+        }
+        return html`<div className="app-root" style=${{ '--accent': stuff.accent }}>${screen}</div>`;
+      }
+
+      ReactDOM.createRoot(document.getElementById('root')).render(
+        html`<${StrictMode}><${StuffProvider}><${App} /></${StuffProvider}></${StrictMode}>`
+      );
+    </script>
+  </body>
+</html>

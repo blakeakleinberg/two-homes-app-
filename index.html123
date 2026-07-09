@@ -6,6 +6,7 @@
     <meta name="theme-color" content="#EAF3FB" />
     <title>Two Homes</title>
 
+    <!-- Fonts (from Google's CDN for now). -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -13,10 +14,10 @@
       rel="stylesheet"
     />
 
-    <!-- React + htm (a tiny, sturdy way to build the screens — no in-browser translator needed). -->
+    <!-- React + a JSX translator, all from a CDN. This is what lets the whole app be one file. -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/htm@3/dist/htm.umd.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
       :root {
@@ -112,9 +113,8 @@
   <body>
     <div id="root"></div>
 
-    <script>
-      const { useState, useCallback, useEffect, useContext, createContext, createElement, StrictMode } = React;
-      const html = htm.bind(createElement);
+    <script type="text/babel" data-presets="react">
+      const { useState, useCallback, useEffect, useContext, createContext, StrictMode } = React;
 
       /* ---------------- store: the one on-device source of truth ---------------- */
       const KEY = 'twoHomes.myStuff';
@@ -129,11 +129,11 @@
           const raw = localStorage.getItem(KEY);
           if (!raw) return { ...DEFAULT_STUFF };
           return migrate(JSON.parse(raw));
-        } catch (e) { return { ...DEFAULT_STUFF }; }
+        } catch { return { ...DEFAULT_STUFF }; }
       }
       function saveStuff(patch) {
         const next = { ...loadStuff(), ...patch };
-        try { localStorage.setItem(KEY, JSON.stringify(next)); } catch (e) {}
+        try { localStorage.setItem(KEY, JSON.stringify(next)); } catch {}
         return next;
       }
       function setHome(which, fields) {
@@ -141,7 +141,7 @@
         return saveStuff({ homes: { ...s.homes, [which]: { ...s.homes[which], ...fields } } });
       }
       function resetStuff() {
-        try { localStorage.removeItem(KEY); } catch (e) {}
+        try { localStorage.removeItem(KEY); } catch {}
         return { ...DEFAULT_STUFF };
       }
       function migrate(data) {
@@ -156,25 +156,25 @@
           tag: 'She carries her home wherever she goes.',
           lines: {
             meet: "Hi, I'm Shelly! I'm so happy it's you. What should I call you?",
-            allset: (n) => 'All set' + (n ? ', ' + n : '') + "! When it's almost time to switch homes, come find me. I'll help you pack — and I'm always here if you want to talk about how you feel.",
-            home: (n) => 'Hi again' + (n ? ', ' + n : '') + ". Take your time — I'm right here.",
-            handoff: (n) => 'Hi' + (n ? ', ' + n : '') + "! Shelly told me you might visit — I'm here now.",
+            allset: (n) => `All set${n ? `, ${n}` : ''}! When it's almost time to switch homes, come find me. I'll help you pack — and I'm always here if you want to talk about how you feel.`,
+            home: (n) => `Hi again${n ? `, ${n}` : ''}. Take your time — I'm right here.`,
+            handoff: (n) => `Hi${n ? `, ${n}` : ''}! Shelly told me you might visit — I'm here now.`,
           } },
         { id: 'puffy', name: 'Puffy', emoji: '☁️', color: '#9B8FD1',
           tag: 'Puffy floats over both your homes.',
           lines: {
             meet: "Hi there! I'm Puffy. Same sky over both your homes — and now I'm your cloud. What should I call you?",
-            allset: (n) => "You're all set" + (n ? ', ' + n : '') + '! Come float back anytime — to pack, to check your weather, or just to say hi.',
-            home: (n) => 'Hi' + (n ? ', ' + n : '') + "! Same sky today. Glad you're here.",
-            handoff: (n) => 'Hi' + (n ? ', ' + n : '') + "! I'm Puffy — I'll float along with you now.",
+            allset: (n) => `You're all set${n ? `, ${n}` : ''}! Come float back anytime — to pack, to check your weather, or just to say hi.`,
+            home: (n) => `Hi${n ? `, ${n}` : ''}! Same sky today. Glad you're here.`,
+            handoff: (n) => `Hi${n ? `, ${n}` : ''}! I'm Puffy — I'll float along with you now.`,
           } },
         { id: 'pip', name: 'Pip', emoji: '🐦', color: '#E0A458',
           tag: 'Pip has two cozy nests.',
           lines: {
             meet: "Hey! I'm Pip. Two nests, one you, one me — we're a team now. What should I call you?",
-            allset: (n) => 'Ready to fly' + (n ? ', ' + n : '') + "! Whenever it's switch day, I've got you — packing, feelings, all of it.",
-            home: (n) => "Hey, you're back" + (n ? ', ' + n : '') + "! Two nests, one you. Let's go!",
-            handoff: (n) => 'Hey' + (n ? ', ' + n : '') + "! I'm Pip — two nests, one you. Let's fly!",
+            allset: (n) => `Ready to fly${n ? `, ${n}` : ''}! Whenever it's switch day, I've got you — packing, feelings, all of it.`,
+            home: (n) => `Hey, you're back${n ? `, ${n}` : ''}! Two nests, one you. Let's go!`,
+            handoff: (n) => `Hey${n ? `, ${n}` : ''}! I'm Pip — two nests, one you. Let's fly!`,
           } },
       ];
       const getBuddy = (id) => BUDDIES.find((b) => b.id === id) || BUDDIES[0];
@@ -187,7 +187,7 @@
           u.rate = 0.95; u.pitch = 1.1;
           window.speechSynthesis.cancel();
           window.speechSynthesis.speak(u);
-        } catch (e) {}
+        } catch {}
       }
 
       /* ---------------- shared state ---------------- */
@@ -197,136 +197,134 @@
         const update = useCallback((patch) => setStuff(saveStuff(patch)), []);
         const refresh = useCallback(() => setStuff(loadStuff()), []);
         const reset = useCallback(() => setStuff(resetStuff()), []);
-        return html`<${StuffContext.Provider} value=${{ stuff, update, refresh, reset }}>${children}</${StuffContext.Provider}>`;
+        return <StuffContext.Provider value={{ stuff, update, refresh, reset }}>{children}</StuffContext.Provider>;
       }
       function useMyStuff() {
         const ctx = useContext(StuffContext);
-        if (!ctx) throw new Error('useMyStuff must be used inside StuffProvider');
+        if (!ctx) throw new Error('useMyStuff must be used inside <StuffProvider>');
         return ctx;
       }
 
       /* ---------------- little pieces ---------------- */
       function BuddyArt({ id, size = 160, ring = false }) {
         const buddy = getBuddy(id);
-        return html`
-          <div className=${'buddy-art' + (ring ? ' buddy-art--ring' : '')} style=${{ width: size, height: size }}>
-            <span className="buddy-emoji" style=${{ fontSize: size * 0.6 }} role="img" aria-label=${buddy.name}>${buddy.emoji}</span>
-          </div>`;
+        return (
+          <div className={`buddy-art${ring ? ' buddy-art--ring' : ''}`} style={{ width: size, height: size }}>
+            <span className="buddy-emoji" style={{ fontSize: size * 0.6 }} role="img" aria-label={buddy.name}>{buddy.emoji}</span>
+          </div>
+        );
       }
       function Nav({ onBack, onNext, nextLabel = 'Next', backLabel = 'Back', showBack = true }) {
-        return html`
+        return (
           <nav className="nav">
-            ${showBack
-              ? html`<button className="btn btn-ghost" onClick=${onBack} aria-label=${backLabel}>← ${backLabel}</button>`
-              : html`<span/>`}
-            ${onNext
-              ? html`<button className="btn btn-primary" onClick=${onNext} aria-label=${nextLabel}>${nextLabel} →</button>`
-              : html`<span/>`}
-          </nav>`;
+            {showBack ? <button className="btn btn-ghost" onClick={onBack} aria-label={backLabel}>← {backLabel}</button> : <span />}
+            {onNext ? <button className="btn btn-primary" onClick={onNext} aria-label={nextLabel}>{nextLabel} →</button> : <span />}
+          </nav>
+        );
       }
 
       /* ---------------- screens ---------------- */
       function Welcome({ go }) {
-        return html`
+        return (
           <main className="screen screen--center">
-            <div className="welcome-buddies">${BUDDIES.map((b) => html`<${BuddyArt} key=${b.id} id=${b.id} size=${84} />`)}</div>
+            <div className="welcome-buddies">{BUDDIES.map((b) => <BuddyArt key={b.id} id={b.id} size={84} />)}</div>
             <h1 className="title">Two Homes</h1>
             <p className="subtitle">A calm little place that's just yours.</p>
-            <button className="btn btn-primary btn-big" onClick=${() => go('picker')}>Let's go →</button>
-          </main>`;
+            <button className="btn btn-primary btn-big" onClick={() => go('picker')}>Let's go →</button>
+          </main>
+        );
       }
 
       function Picker({ back, advance, hasBack }) {
         const { stuff, update } = useMyStuff();
         const [selected, setSelected] = useState(stuff.buddy);
         function pick(b) { setSelected(b.id); speak(b.name); }
-        function next() { update({ buddy: selected || 'shelly' }); advance('picker'); }
-        return html`
+        function next() { update({ buddy: selected ?? 'shelly' }); advance('picker'); }
+        return (
           <main className="screen">
             <h1 className="title">Pick Your Buddy!</h1>
             <p className="subtitle">You can change anytime. Your buddy is here for you. ♥</p>
             <div className="cards">
-              ${BUDDIES.map((b) => {
+              {BUDDIES.map((b) => {
                 const isSel = selected === b.id;
                 const dim = selected && !isSel;
-                return html`
-                  <button key=${b.id} className=${'card' + (isSel ? ' card--selected' : '') + (dim ? ' card--dim' : '')}
-                    style=${{ '--buddy': b.color }} aria-pressed=${isSel} onClick=${() => pick(b)}>
-                    <${BuddyArt} id=${b.id} size=${120} />
-                    <span className="card-name">${b.name}</span>
-                    <span className="card-tag">${b.tag}</span>
-                  </button>`;
+                return (
+                  <button key={b.id} className={`card${isSel ? ' card--selected' : ''}${dim ? ' card--dim' : ''}`}
+                    style={{ '--buddy': b.color }} aria-pressed={isSel} onClick={() => pick(b)}>
+                    <BuddyArt id={b.id} size={120} />
+                    <span className="card-name">{b.name}</span>
+                    <span className="card-tag">{b.tag}</span>
+                  </button>
+                );
               })}
             </div>
-            <${Nav} onBack=${back} onNext=${next} showBack=${hasBack} />
-          </main>`;
+            <Nav onBack={back} onNext={next} showBack={hasBack} />
+          </main>
+        );
       }
 
       const SWATCHES = ['#6BB0E5', '#F48FB1', '#7FB069', '#9B8FD1', '#E0A458', '#4DB6AC', '#FF8A65', '#BA68C8'];
 
       function Colors({ back, advance }) {
         const { stuff, update } = useMyStuff();
-        return html`
+        return (
           <main className="screen">
             <h1 className="title">Make it yours</h1>
             <p className="subtitle">Pick the colors you love. You can change these whenever you want.</p>
-            <div className="preview"><${BuddyArt} id=${stuff.buddy} size=${140} ring=${true} /></div>
+            <div className="preview"><BuddyArt id={stuff.buddy} size={140} ring /></div>
             <div className="swatches">
-              ${SWATCHES.map((c) => html`
-                <button key=${c} className=${'swatch' + (stuff.accent === c ? ' swatch--on' : '')} style=${{ background: c }}
-                  aria-label="Pick this color" aria-pressed=${stuff.accent === c} onClick=${() => update({ accent: c })} />`)}
+              {SWATCHES.map((c) => (
+                <button key={c} className={`swatch${stuff.accent === c ? ' swatch--on' : ''}`} style={{ background: c }}
+                  aria-label="Pick this color" aria-pressed={stuff.accent === c} onClick={() => update({ accent: c })} />
+              ))}
               <label className="swatch swatch--more" aria-label="More colors">+
-                <input type="color" value=${stuff.accent} onChange=${(e) => update({ accent: e.target.value })} />
+                <input type="color" value={stuff.accent} onChange={(e) => update({ accent: e.target.value })} />
               </label>
             </div>
-            <${Nav} onBack=${back} onNext=${() => advance('colors')} />
-          </main>`;
+            <Nav onBack={back} onNext={() => advance('colors')} />
+          </main>
+        );
       }
 
       function Meet({ back, advance }) {
         const { stuff, update } = useMyStuff();
         const buddy = getBuddy(stuff.buddy);
         const line = buddy.lines.meet;
-        return html`
+        return (
           <main className="screen screen--center">
-            <${BuddyArt} id=${buddy.id} size=${160} ring=${true} />
+            <BuddyArt id={buddy.id} size={160} ring />
             <div className="speech">
-              <p>${line}</p>
-              <button className="hear" onClick=${() => speak(line)} aria-label="Hear it">🔊</button>
+              <p>{line}</p>
+              <button className="hear" onClick={() => speak(line)} aria-label="Hear it">🔊</button>
             </div>
-            <input className="text-input" type="text" placeholder="Type your name (or skip)" value=${stuff.name}
-              maxLength=${24} autoComplete="off" onChange=${(e) => update({ name: e.target.value })} />
-            <${Nav} onBack=${back} onNext=${() => advance('meet')} nextLabel=${stuff.name ? 'Next' : 'Skip'} />
-          </main>`;
+            <input className="text-input" type="text" placeholder="Type your name (or skip)" value={stuff.name}
+              maxLength={24} autoComplete="off" onChange={(e) => update({ name: e.target.value })} />
+            <Nav onBack={back} onNext={() => advance('meet')} nextLabel={stuff.name ? 'Next' : 'Skip'} />
+          </main>
+        );
       }
 
       function Homes({ back, advance }) {
         const { stuff, refresh } = useMyStuff();
         const buddy = getBuddy(stuff.buddy);
         function edit(which, field, val) { setHome(which, { [field]: val }); refresh(); }
-        return html`
+        return (
           <main className="screen">
             <h1 className="title">Your two homes</h1>
-            <p className="subtitle">${buddy.name}: “You can call them whatever feels right.”</p>
-            ${['home1', 'home2'].map((h, i) => html`
-              <div className="home-block" key=${h}>
-                <label className="field-label">Home ${i + 1}</label>
+            <p className="subtitle">{buddy.name}: “You can call them whatever feels right.”</p>
+            {['home1', 'home2'].map((h, i) => (
+              <div className="home-block" key={h}>
+                <label className="field-label">Home {i + 1}</label>
                 <input className="text-input" type="text"
-                  placeholder=${i === 0 ? "e.g. Mom's, Grandma's…" : "e.g. Dad's, the beach house…"}
-                  value=${stuff.homes[h].label} maxLength=${30} onChange=${(e) => edit(h, 'label', e.target.value)} />
+                  placeholder={i === 0 ? "e.g. Mom's, Grandma's…" : "e.g. Dad's, the beach house…"}
+                  value={stuff.homes[h].label} maxLength={30} onChange={(e) => edit(h, 'label', e.target.value)} />
                 <input className="text-input text-input--sub" type="text" placeholder="Add a grown-up's name (optional)"
-                  value=${stuff.homes[h].grownup} maxLength=${30} onChange=${(e) => edit(h, 'grownup', e.target.value)} />
-              </div>`)}
-            <${Nav} onBack=${back} onNext=${() => advance('homes')} nextLabel="All done" />
-          </main>`;
-      }
-
-      function Row({ children, onEdit }) {
-        return html`
-          <div className="review-row">
-            <div className="review-content">${children}</div>
-            <button className="pencil" onClick=${onEdit} aria-label="Edit this">✏️</button>
-          </div>`;
+                  value={stuff.homes[h].grownup} maxLength={30} onChange={(e) => edit(h, 'grownup', e.target.value)} />
+              </div>
+            ))}
+            <Nav onBack={back} onNext={() => advance('homes')} nextLabel="All done" />
+          </main>
+        );
       }
 
       function Review({ go, editStep }) {
@@ -334,15 +332,22 @@
         const buddy = getBuddy(stuff.buddy);
         const h1 = stuff.homes.home1.label || 'Home 1';
         const h2 = stuff.homes.home2.label || 'Home 2';
-        return html`
+        const Row = ({ children, onEdit }) => (
+          <div className="review-row">
+            <div className="review-content">{children}</div>
+            <button className="pencil" onClick={onEdit} aria-label="Edit this">✏️</button>
+          </div>
+        );
+        return (
           <main className="screen">
             <h1 className="title">Here's your setup!</h1>
-            <${Row} onEdit=${() => editStep('picker')}><${BuddyArt} id=${buddy.id} size=${44} /><span>Your buddy: <b>${buddy.name}</b></span></${Row}>
-            <${Row} onEdit=${() => editStep('colors')}><span className="dot" style=${{ background: stuff.accent }}></span><span>Your colors</span></${Row}>
-            <${Row} onEdit=${() => editStep('meet')}><span>Your name: <b>${stuff.name || '—'}</b></span></${Row}>
-            <${Row} onEdit=${() => editStep('homes')}><span>Your homes: <b>${h1}</b> and <b>${h2}</b></span></${Row}>
-            <button className="btn btn-primary btn-big" onClick=${() => go('allset')}>Looks good! →</button>
-          </main>`;
+            <Row onEdit={() => editStep('picker')}><BuddyArt id={buddy.id} size={44} /><span>Your buddy: <b>{buddy.name}</b></span></Row>
+            <Row onEdit={() => editStep('colors')}><span className="dot" style={{ background: stuff.accent }} /><span>Your colors</span></Row>
+            <Row onEdit={() => editStep('meet')}><span>Your name: <b>{stuff.name || '—'}</b></span></Row>
+            <Row onEdit={() => editStep('homes')}><span>Your homes: <b>{h1}</b> and <b>{h2}</b></span></Row>
+            <button className="btn btn-primary btn-big" onClick={() => go('allset')}>Looks good! →</button>
+          </main>
+        );
       }
 
       function AllSet({ go }) {
@@ -350,37 +355,39 @@
         const buddy = getBuddy(stuff.buddy);
         const line = buddy.lines.allset(stuff.name);
         useEffect(() => { update({ onboarded: true }); }, []);
-        return html`
+        return (
           <main className="screen screen--center">
-            <${BuddyArt} id=${buddy.id} size=${160} ring=${true} />
+            <BuddyArt id={buddy.id} size={160} ring />
             <div className="speech">
-              <p>${line}</p>
-              <button className="hear" onClick=${() => speak(line)} aria-label="Hear it">🔊</button>
+              <p>{line}</p>
+              <button className="hear" onClick={() => speak(line)} aria-label="Hear it">🔊</button>
             </div>
-            <button className="btn btn-primary btn-big" onClick=${() => go('home')}>Go →</button>
-          </main>`;
+            <button className="btn btn-primary btn-big" onClick={() => go('home')}>Go →</button>
+          </main>
+        );
       }
 
       function Home({ go }) {
         const { stuff } = useMyStuff();
         const buddy = getBuddy(stuff.buddy);
         const line = buddy.lines.home(stuff.name);
-        return html`
+        return (
           <main className="screen">
             <header className="home-header">
-              <${BuddyArt} id=${buddy.id} size=${72} />
+              <BuddyArt id={buddy.id} size={72} />
               <div className="speech speech--inline">
-                <p>${line}</p>
-                <button className="hear" onClick=${() => speak(line)} aria-label="Hear it">🔊</button>
+                <p>{line}</p>
+                <button className="hear" onClick={() => speak(line)} aria-label="Hear it">🔊</button>
               </div>
-              <button className="gear" onClick=${() => go('settings')} aria-label="Settings">⚙️</button>
+              <button className="gear" onClick={() => go('settings')} aria-label="Settings">⚙️</button>
             </header>
             <div className="hub">
-              <button className="hub-tile" onClick=${() => go('pack')}><span className="hub-emoji">🎒</span><span>Pack</span></button>
-              <button className="hub-tile" onClick=${() => go('calendar')}><span className="hub-emoji">📅</span><span>Calendar</span></button>
-              <button className="hub-tile" onClick=${() => go('feelings')}><span className="hub-emoji">💛</span><span>Feelings</span></button>
+              <button className="hub-tile" onClick={() => go('pack')}><span className="hub-emoji">🎒</span><span>Pack</span></button>
+              <button className="hub-tile" onClick={() => go('calendar')}><span className="hub-emoji">📅</span><span>Calendar</span></button>
+              <button className="hub-tile" onClick={() => go('feelings')}><span className="hub-emoji">💛</span><span>Feelings</span></button>
             </div>
-          </main>`;
+          </main>
+        );
       }
 
       function Settings({ go }) {
@@ -389,73 +396,79 @@
         function switchBuddy(b) { if (b.id === stuff.buddy) return; update({ buddy: b.id }); speak(b.lines.handoff(stuff.name)); }
         function editHome(which, field, val) { setHome(which, { [field]: val }); refresh(); }
         function doReset() { reset(); setConfirming(false); go('welcome'); }
-        return html`
+        return (
           <main className="screen">
             <header className="settings-header">
-              <button className="btn btn-ghost" onClick=${() => go('home')} aria-label="Back to home">← Home</button>
+              <button className="btn btn-ghost" onClick={() => go('home')} aria-label="Back to home">← Home</button>
               <h1 className="title title--sm">My Stuff</h1>
             </header>
             <section className="set-block">
               <h2 className="set-label">Your buddy</h2>
               <div className="buddy-row">
-                ${BUDDIES.map((b) => html`
-                  <button key=${b.id} className=${'buddy-pick' + (stuff.buddy === b.id ? ' buddy-pick--on' : '')}
-                    aria-pressed=${stuff.buddy === b.id} onClick=${() => switchBuddy(b)}>
-                    <${BuddyArt} id=${b.id} size=${56} /><span>${b.name}</span>
-                  </button>`)}
+                {BUDDIES.map((b) => (
+                  <button key={b.id} className={`buddy-pick${stuff.buddy === b.id ? ' buddy-pick--on' : ''}`}
+                    aria-pressed={stuff.buddy === b.id} onClick={() => switchBuddy(b)}>
+                    <BuddyArt id={b.id} size={56} /><span>{b.name}</span>
+                  </button>
+                ))}
               </div>
             </section>
             <section className="set-block">
               <h2 className="set-label">Your colors</h2>
               <div className="swatches">
-                ${SWATCHES.map((c) => html`
-                  <button key=${c} className=${'swatch' + (stuff.accent === c ? ' swatch--on' : '')} style=${{ background: c }}
-                    aria-label="Pick this color" onClick=${() => update({ accent: c })} />`)}
+                {SWATCHES.map((c) => (
+                  <button key={c} className={`swatch${stuff.accent === c ? ' swatch--on' : ''}`} style={{ background: c }}
+                    aria-label="Pick this color" onClick={() => update({ accent: c })} />
+                ))}
                 <label className="swatch swatch--more" aria-label="More colors">+
-                  <input type="color" value=${stuff.accent} onChange=${(e) => update({ accent: e.target.value })} />
+                  <input type="color" value={stuff.accent} onChange={(e) => update({ accent: e.target.value })} />
                 </label>
               </div>
             </section>
             <section className="set-block">
               <h2 className="set-label">Your name</h2>
-              <input className="text-input" type="text" value=${stuff.name} maxLength=${24} placeholder="Type your name"
-                onChange=${(e) => update({ name: e.target.value })} />
+              <input className="text-input" type="text" value={stuff.name} maxLength={24} placeholder="Type your name"
+                onChange={(e) => update({ name: e.target.value })} />
             </section>
             <section className="set-block">
               <h2 className="set-label">Your homes</h2>
-              ${['home1', 'home2'].map((h, i) => html`
-                <div className="home-block" key=${h}>
-                  <input className="text-input" type="text" value=${stuff.homes[h].label} maxLength=${30}
-                    placeholder=${'Home ' + (i + 1)} onChange=${(e) => editHome(h, 'label', e.target.value)} />
-                  <input className="text-input text-input--sub" type="text" value=${stuff.homes[h].grownup} maxLength=${30}
-                    placeholder="Grown-up (optional)" onChange=${(e) => editHome(h, 'grownup', e.target.value)} />
-                </div>`)}
+              {['home1', 'home2'].map((h, i) => (
+                <div className="home-block" key={h}>
+                  <input className="text-input" type="text" value={stuff.homes[h].label} maxLength={30}
+                    placeholder={`Home ${i + 1}`} onChange={(e) => editHome(h, 'label', e.target.value)} />
+                  <input className="text-input text-input--sub" type="text" value={stuff.homes[h].grownup} maxLength={30}
+                    placeholder="Grown-up (optional)" onChange={(e) => editHome(h, 'grownup', e.target.value)} />
+                </div>
+              ))}
             </section>
             <section className="set-block">
-              ${!confirming
-                ? html`<button className="btn btn-danger" onClick=${() => setConfirming(true)}>Delete everything</button>`
-                : html`
-                  <div className="confirm">
-                    <p>This clears everything saved on this device. It can't be undone.</p>
-                    <div className="confirm-row">
-                      <button className="btn btn-ghost" onClick=${() => setConfirming(false)}>Keep my stuff</button>
-                      <button className="btn btn-danger" onClick=${doReset}>Yes, delete</button>
-                    </div>
-                  </div>`}
+              {!confirming ? (
+                <button className="btn btn-danger" onClick={() => setConfirming(true)}>Delete everything</button>
+              ) : (
+                <div className="confirm">
+                  <p>This clears everything saved on this device. It can't be undone.</p>
+                  <div className="confirm-row">
+                    <button className="btn btn-ghost" onClick={() => setConfirming(false)}>Keep my stuff</button>
+                    <button className="btn btn-danger" onClick={doReset}>Yes, delete</button>
+                  </div>
+                </div>
+              )}
             </section>
-          </main>`;
+          </main>
+        );
       }
 
       function Placeholder({ title, go }) {
         const { stuff } = useMyStuff();
         const buddy = getBuddy(stuff.buddy);
-        return html`
+        return (
           <main className="screen screen--center">
-            <${BuddyArt} id=${buddy.id} size=${120} />
-            <h1 className="title">${title}</h1>
-            <p className="subtitle">${buddy.name} is getting this room ready. Coming soon!</p>
-            <button className="btn btn-primary" onClick=${() => go('home')}>← Back home</button>
-          </main>`;
+            <BuddyArt id={buddy.id} size={120} />
+            <h1 className="title">{title}</h1>
+            <p className="subtitle">{buddy.name} is getting this room ready. Coming soon!</p>
+            <button className="btn btn-primary" onClick={() => go('home')}>← Back home</button>
+          </main>
+        );
       }
 
       /* ---------------- app (flow controller) ---------------- */
@@ -484,25 +497,26 @@
         const p = { go, back, advance, editStep, hasBack: history.length > 0 };
         let screen;
         switch (route) {
-          case 'welcome':  screen = html`<${Welcome} ...${p} />`; break;
-          case 'picker':   screen = html`<${Picker} ...${p} />`; break;
-          case 'colors':   screen = html`<${Colors} ...${p} />`; break;
-          case 'meet':     screen = html`<${Meet} ...${p} />`; break;
-          case 'homes':    screen = html`<${Homes} ...${p} />`; break;
-          case 'review':   screen = html`<${Review} ...${p} />`; break;
-          case 'allset':   screen = html`<${AllSet} ...${p} />`; break;
-          case 'home':     screen = html`<${Home} ...${p} />`; break;
-          case 'settings': screen = html`<${Settings} ...${p} />`; break;
-          case 'calendar': screen = html`<${Placeholder} title="Calendar" ...${p} />`; break;
-          case 'feelings': screen = html`<${Placeholder} title="Feelings" ...${p} />`; break;
-          case 'pack':     screen = html`<${Placeholder} title="Pack" ...${p} />`; break;
-          default:         screen = html`<${Home} ...${p} />`;
+          case 'welcome':  screen = <Welcome {...p} />; break;
+          case 'picker':   screen = <Picker {...p} />; break;
+          case 'colors':   screen = <Colors {...p} />; break;
+          case 'meet':     screen = <Meet {...p} />; break;
+          case 'homes':    screen = <Homes {...p} />; break;
+          case 'review':   screen = <Review {...p} />; break;
+          case 'allset':   screen = <AllSet {...p} />; break;
+          case 'home':     screen = <Home {...p} />; break;
+          case 'settings': screen = <Settings {...p} />; break;
+          case 'calendar': screen = <Placeholder title="Calendar" {...p} />; break;
+          case 'feelings': screen = <Placeholder title="Feelings" {...p} />; break;
+          case 'pack':     screen = <Placeholder title="Pack" {...p} />; break;
+          default:         screen = <Home {...p} />;
         }
-        return html`<div className="app-root" style=${{ '--accent': stuff.accent }}>${screen}</div>`;
+        return <div className="app-root" style={{ '--accent': stuff.accent }}>{screen}</div>;
       }
 
       ReactDOM.createRoot(document.getElementById('root')).render(
-        html`<${StrictMode}><${StuffProvider}><${App} /></${StuffProvider}></${StrictMode}>`
+        <StrictMode><StuffProvider><App /></StuffProvider></StrictMode>
       );
     </script>
   </body>
+</html>

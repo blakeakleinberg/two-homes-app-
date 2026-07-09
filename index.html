@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#EAF3FB" />
+    <title>Two Homes</title>
+
+    <!-- Fonts (from Google's CDN for now). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- React + a JSX translator, all from a CDN. This is what lets the whole app be one file. -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+      :root {
+        --bg-top: #EAF3FB;
+        --bg-bottom: #FBF3E9;
+        --ink: #2E3A59;
+        --ink-soft: #64708C;
+        --card: #FFFFFF;
+        --accent: #6BB0E5;
+        --danger: #E57373;
+        --radius: 22px;
+        --shadow: 0 10px 30px rgba(46, 58, 89, 0.10);
+        --shadow-sm: 0 4px 14px rgba(46, 58, 89, 0.08);
+        font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      html, body, #root { height: 100%; margin: 0; }
+      body {
+        color: var(--ink);
+        background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+        background-attachment: fixed;
+        -webkit-font-smoothing: antialiased;
+      }
+      .app-root { min-height: 100%; display: flex; justify-content: center; }
+      .screen { width: 100%; max-width: 480px; padding: 28px 22px 40px; display: flex; flex-direction: column; gap: 18px; }
+      .screen--center { align-items: center; text-align: center; justify-content: center; min-height: 100vh; }
+      .title { font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: clamp(28px, 8vw, 40px); margin: 0; line-height: 1.05; }
+      .title--sm { font-size: 24px; }
+      .subtitle { margin: 0; color: var(--ink-soft); font-size: 17px; font-weight: 600; }
+      .btn { font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 18px; border: none; border-radius: 999px; padding: 14px 26px; cursor: pointer; transition: transform .12s ease, box-shadow .12s ease, filter .12s ease; }
+      .btn:active { transform: translateY(1px) scale(0.99); }
+      .btn-primary { background: var(--accent); color: #fff; box-shadow: var(--shadow-sm); }
+      .btn-primary:hover { filter: brightness(1.04); }
+      .btn-ghost { background: rgba(46, 58, 89, 0.07); color: var(--ink); }
+      .btn-danger { background: var(--danger); color: #fff; }
+      .btn-big { padding: 18px 34px; font-size: 20px; align-self: center; }
+      .nav { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 10px; gap: 12px; }
+      .cards { display: flex; flex-direction: column; gap: 16px; }
+      @media (min-width: 720px) { .cards { flex-direction: row; } }
+      .card { background: var(--card); border: 3px solid transparent; border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; box-shadow: var(--shadow-sm); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, opacity .18s ease; animation: rise .4s ease both; }
+      .cards .card:nth-child(2) { animation-delay: .07s; }
+      .cards .card:nth-child(3) { animation-delay: .14s; }
+      .card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+      .card--selected { border-color: var(--buddy); transform: translateY(-4px) scale(1.02); box-shadow: var(--shadow); }
+      .card--dim { opacity: .5; transform: scale(0.97); }
+      .card-name { font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 24px; color: var(--buddy); }
+      .card-tag { color: var(--ink-soft); font-weight: 600; font-size: 15px; }
+      .buddy-art { display: grid; place-items: center; }
+      .buddy-art img { width: 100%; height: 100%; object-fit: contain; }
+      .buddy-art--ring { border-radius: 50%; background: #EAF3FB; background: color-mix(in srgb, var(--accent) 16%, white); padding: 14px; box-shadow: var(--shadow-sm); }
+      .buddy-emoji { line-height: 1; }
+      .welcome-buddies { display: flex; gap: 6px; }
+      .speech { background: var(--card); border-radius: 18px; padding: 16px 18px; box-shadow: var(--shadow-sm); max-width: 360px; display: flex; align-items: flex-start; gap: 10px; }
+      .speech p { margin: 0; font-weight: 600; font-size: 17px; line-height: 1.4; text-align: left; }
+      .speech--inline { flex: 1; }
+      .hear { background: none; border: none; font-size: 20px; cursor: pointer; padding: 0; line-height: 1; }
+      .text-input { width: 100%; font-family: 'Nunito', sans-serif; font-size: 18px; font-weight: 600; color: var(--ink); background: var(--card); border: 2px solid rgba(46, 58, 89, 0.12); border-radius: 16px; padding: 14px 16px; }
+      .text-input:focus { outline: none; border-color: var(--accent); }
+      .text-input--sub { font-size: 16px; margin-top: 8px; }
+      .field-label { font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 18px; }
+      .home-block { display: flex; flex-direction: column; margin-bottom: 6px; }
+      .preview { display: grid; place-items: center; padding: 8px; }
+      .swatches { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+      .swatch { width: 48px; height: 48px; border-radius: 50%; border: 3px solid #fff; box-shadow: var(--shadow-sm); cursor: pointer; position: relative; transition: transform .12s ease; }
+      .swatch:hover { transform: scale(1.08); }
+      .swatch--on { outline: 3px solid var(--ink); outline-offset: 2px; }
+      .swatch--more { background: #fff; color: var(--ink-soft); font-size: 26px; display: grid; place-items: center; overflow: hidden; }
+      .swatch--more input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+      .review-row { display: flex; align-items: center; gap: 12px; background: var(--card); border-radius: 16px; padding: 14px 16px; box-shadow: var(--shadow-sm); }
+      .review-content { display: flex; align-items: center; gap: 10px; flex: 1; font-weight: 600; font-size: 17px; }
+      .pencil { background: none; border: none; font-size: 20px; cursor: pointer; }
+      .dot { width: 26px; height: 26px; border-radius: 50%; display: inline-block; box-shadow: var(--shadow-sm); }
+      .home-header { display: flex; align-items: center; gap: 12px; }
+      .gear { margin-left: auto; background: none; border: none; font-size: 26px; cursor: pointer; }
+      .hub { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 10px; }
+      .hub-tile { background: var(--card); border: none; border-radius: var(--radius); padding: 26px 14px; display: flex; flex-direction: column; align-items: center; gap: 8px; font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 19px; color: var(--ink); cursor: pointer; box-shadow: var(--shadow-sm); transition: transform .12s ease, box-shadow .12s ease; }
+      .hub-tile:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+      .hub-emoji { font-size: 40px; }
+      .settings-header { display: flex; align-items: center; gap: 12px; }
+      .set-block { display: flex; flex-direction: column; gap: 10px; }
+      .set-label { font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 18px; margin: 6px 0 0; }
+      .buddy-row { display: flex; gap: 12px; }
+      .buddy-pick { flex: 1; background: var(--card); border: 3px solid transparent; border-radius: 16px; padding: 12px 6px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-family: 'Fredoka', sans-serif; font-weight: 600; color: var(--ink); cursor: pointer; box-shadow: var(--shadow-sm); }
+      .buddy-pick--on { border-color: var(--accent); }
+      .confirm { background: var(--card); border-radius: 16px; padding: 16px; box-shadow: var(--shadow-sm); }
+      .confirm p { margin: 0 0 12px; font-weight: 600; }
+      .confirm-row { display: flex; gap: 12px; justify-content: flex-end; }
+      @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+      :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel" data-presets="react">
+      const { useState, useCallback, useEffect, useContext, createContext, StrictMode } = React;
+
+      /* ---------------- store: the one on-device source of truth ---------------- */
+      const KEY = 'twoHomes.myStuff';
+      const VERSION = 1;
+      const DEFAULT_STUFF = {
+        version: VERSION, onboarded: false, buddy: null, accent: '#6BB0E5', name: '',
+        homes: { home1: { label: '', grownup: '' }, home2: { label: '', grownup: '' } },
+        calendar: {}, holidays: {},
+      };
+      function loadStuff() {
+        try {
+          const raw = localStorage.getItem(KEY);
+          if (!raw) return { ...DEFAULT_STUFF };
+          return migrate(JSON.parse(raw));
+        } catch { return { ...DEFAULT_STUFF }; }
+      }
+      function saveStuff(patch) {
+        const next = { ...loadStuff(), ...patch };
+        try { localStorage.setItem(KEY, JSON.stringify(next)); } catch {}
+        return next;
+      }
+      function setHome(which, fields) {
+        const s = loadStuff();
+        return saveStuff({ homes: { ...s.homes, [which]: { ...s.homes[which], ...fields } } });
+      }
+      function resetStuff()

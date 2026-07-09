@@ -120,4 +120,570 @@
 
       /* Feelings */
       .weather-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-      .weather-btn { background: var(--card); border: 3px solid transparent; border-radius: var(--radius); padding: 22px 10px; display: flex; flex-direction:
+      .weather-btn { background: var(--card); border: 3px solid transparent; border-radius: var(--radius); padding: 22px 10px; display: flex; flex-direction: column; align-items: center; gap: 8px; font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 18px; color: var(--ink); cursor: pointer; box-shadow: var(--shadow-sm); transition: transform .12s ease; }
+      .weather-btn:hover { transform: translateY(-2px); }
+      .weather-btn--on { border-color: var(--accent); }
+      .weather-emoji { font-size: 40px; }
+      .offramp { background: #EAF3FB; background: color-mix(in srgb, var(--accent) 12%, white); border-radius: 16px; padding: 16px; }
+      .offramp p { margin: 0; font-weight: 600; line-height: 1.45; }
+
+      /* Calendar */
+      .cal-nav { display: flex; align-items: center; justify-content: space-between; }
+      .cal-month { font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 20px; }
+      .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+      .cal-dow { text-align: center; font-weight: 700; color: var(--ink-soft); font-size: 13px; padding: 4px 0; }
+      .cal-day { aspect-ratio: 1; border: none; border-radius: 12px; background: var(--card); box-shadow: var(--shadow-sm); font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 15px; color: var(--ink); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+      .cal-day--home1 { background: #CDE7B0; }
+      .cal-day--home2 { background: #D8CCF0; }
+      .cal-day--today { outline: 2px solid var(--accent); outline-offset: -2px; }
+      .cal-day--sel { outline: 3px solid var(--ink); outline-offset: -3px; }
+      .cal-legend { display: flex; gap: 18px; justify-content: center; font-weight: 600; color: var(--ink-soft); }
+      .cal-legend span { display: inline-flex; align-items: center; gap: 6px; }
+      .cal-dot { width: 16px; height: 16px; border-radius: 5px; display: inline-block; }
+      .cal-dot--home1 { background: #CDE7B0; }
+      .cal-dot--home2 { background: #D8CCF0; }
+      .cal-chooser { background: var(--card); border-radius: 16px; padding: 16px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 10px; align-items: center; }
+      .cal-chooser-q { margin: 0; font-weight: 700; text-align: center; }
+      .cal-chooser-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script>
+      const { useState, useCallback, useEffect, useContext, createContext, createElement, StrictMode } = React;
+      const html = htm.bind(createElement);
+
+      /* ---------------- store: the one on-device source of truth ---------------- */
+      const KEY = 'twoHomes.myStuff';
+      const VERSION = 1;
+      const DEFAULT_STUFF = {
+        version: VERSION, onboarded: false, buddy: null, accent: '#6BB0E5', name: '',
+        homes: { home1: { label: '', grownup: '' }, home2: { label: '', grownup: '' } },
+        calendar: {}, holidays: {},
+        packList: [
+          { id: 'p1', text: 'Charger', done: false },
+          { id: 'p2', text: 'Toothbrush', done: false },
+          { id: 'p3', text: 'Clothes', done: false },
+          { id: 'p4', text: 'Homework', done: false },
+          { id: 'p5', text: 'Comfort item', done: false },
+        ],
+      };
+      function loadStuff() {
+        try {
+          const raw = localStorage.getItem(KEY);
+          if (!raw) return { ...DEFAULT_STUFF };
+          return migrate(JSON.parse(raw));
+        } catch (e) { return { ...DEFAULT_STUFF }; }
+      }
+      function saveStuff(patch) {
+        const next = { ...loadStuff(), ...patch };
+        try { localStorage.setItem(KEY, JSON.stringify(next)); } catch (e) {}
+        return next;
+      }
+      function setHome(which, fields) {
+        const s = loadStuff();
+        return saveStuff({ homes: { ...s.homes, [which]: { ...s.homes[which], ...fields } } });
+      }
+      function resetStuff() {
+        try { localStorage.removeItem(KEY); } catch (e) {}
+        return { ...DEFAULT_STUFF };
+      }
+      function migrate(data) {
+        if (!data || typeof data !== 'object') return { ...DEFAULT_STUFF };
+        if (!data.version) data = { ...data, version: 1 };
+        return { ...DEFAULT_STUFF, ...data, homes: { ...DEFAULT_STUFF.homes, ...(data.homes || {}) } };
+      }
+
+      /* ---------------- buddies ---------------- */
+      const BUDDIES = [
+        { id: 'shelly', name: 'Shelly', emoji: '🐢', color: '#7FB069',
+          tag: 'She carries her home wherever she goes.',
+          lines: {
+            meet: "Hi, I'm Shelly! I'm so happy it's you. What should I call you?",
+            allset: (n) => 'All set' + (n ? ', ' + n : '') + "! When it's almost time to switch homes, come find me. I'll help you pack — and I'm always here if you want to talk about how you feel.",
+            home: (n) => 'Hi again' + (n ? ', ' + n : '') + ". Take your time — I'm right here.",
+            handoff: (n) => 'Hi' + (n ? ', ' + n : '') + "! Shelly told me you might visit — I'm here now.",
+          } },
+        { id: 'puffy', name: 'Puffy', emoji: '☁️', color: '#9B8FD1',
+          tag: 'Puffy floats over both your homes.',
+          lines: {
+            meet: "Hi there! I'm Puffy. Same sky over both your homes — and now I'm your cloud. What should I call you?",
+            allset: (n) => "You're all set" + (n ? ', ' + n : '') + '! Come float back anytime — to pack, to check your weather, or just to say hi.',
+            home: (n) => 'Hi' + (n ? ', ' + n : '') + "! Same sky today. Glad you're here.",
+            handoff: (n) => 'Hi' + (n ? ', ' + n : '') + "! I'm Puffy — I'll float along with you now.",
+          } },
+        { id: 'pip', name: 'Pip', emoji: '🐦', color: '#E0A458',
+          tag: 'Pip has two cozy nests.',
+          lines: {
+            meet: "Hey! I'm Pip. Two nests, one you, one me — we're a team now. What should I call you?",
+            allset: (n) => 'Ready to fly' + (n ? ', ' + n : '') + "! Whenever it's switch day, I've got you — packing, feelings, all of it.",
+            home: (n) => "Hey, you're back" + (n ? ', ' + n : '') + "! Two nests, one you. Let's go!",
+            handoff: (n) => 'Hey' + (n ? ', ' + n : '') + "! I'm Pip — two nests, one you. Let's fly!",
+          } },
+      ];
+      const getBuddy = (id) => BUDDIES.find((b) => b.id === id) || BUDDIES[0];
+
+      /* ---------------- optional voice ---------------- */
+      function speak(text) {
+        try {
+          if (!('speechSynthesis' in window) || !text) return;
+          const u = new SpeechSynthesisUtterance(text);
+          u.rate = 0.95; u.pitch = 1.1;
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(u);
+        } catch (e) {}
+      }
+
+      /* ---------------- shared state ---------------- */
+      const StuffContext = createContext(null);
+      function StuffProvider({ children }) {
+        const [stuff, setStuff] = useState(loadStuff);
+        const update = useCallback((patch) => setStuff(saveStuff(patch)), []);
+        const refresh = useCallback(() => setStuff(loadStuff()), []);
+        const reset = useCallback(() => setStuff(resetStuff()), []);
+        return html`<${StuffContext.Provider} value=${{ stuff, update, refresh, reset }}>${children}</${StuffContext.Provider}>`;
+      }
+      function useMyStuff() {
+        const ctx = useContext(StuffContext);
+        if (!ctx) throw new Error('useMyStuff must be used inside StuffProvider');
+        return ctx;
+      }
+
+      /* ---------------- little pieces ---------------- */
+      function BuddyArt({ id, size = 160, ring = false }) {
+        const buddy = getBuddy(id);
+        return html`
+          <div className=${'buddy-art' + (ring ? ' buddy-art--ring' : '')} style=${{ width: size, height: size }}>
+            <span className="buddy-emoji" style=${{ fontSize: size * 0.6 }} role="img" aria-label=${buddy.name}>${buddy.emoji}</span>
+          </div>`;
+      }
+      function Nav({ onBack, onNext, nextLabel = 'Next', backLabel = 'Back', showBack = true }) {
+        return html`
+          <nav className="nav">
+            ${showBack
+              ? html`<button className="btn btn-ghost" onClick=${onBack} aria-label=${backLabel}>← ${backLabel}</button>`
+              : html`<span/>`}
+            ${onNext
+              ? html`<button className="btn btn-primary" onClick=${onNext} aria-label=${nextLabel}>${nextLabel} →</button>`
+              : html`<span/>`}
+          </nav>`;
+      }
+
+      /* ---------------- screens ---------------- */
+      function Welcome({ go }) {
+        return html`
+          <main className="screen screen--center">
+            <div className="welcome-buddies">${BUDDIES.map((b) => html`<${BuddyArt} key=${b.id} id=${b.id} size=${84} />`)}</div>
+            <h1 className="title">Two Homes</h1>
+            <p className="subtitle">A calm little place that's just yours.</p>
+            <button className="btn btn-primary btn-big" onClick=${() => go('picker')}>Let's go →</button>
+          </main>`;
+      }
+
+      function Picker({ back, advance, hasBack }) {
+        const { stuff, update } = useMyStuff();
+        const [selected, setSelected] = useState(stuff.buddy);
+        function pick(b) { setSelected(b.id); speak(b.name); }
+        function next() { update({ buddy: selected || 'shelly' }); advance('picker'); }
+        return html`
+          <main className="screen">
+            <h1 className="title">Pick Your Buddy!</h1>
+            <p className="subtitle">You can change anytime. Your buddy is here for you. ♥</p>
+            <div className="cards">
+              ${BUDDIES.map((b) => {
+                const isSel = selected === b.id;
+                const dim = selected && !isSel;
+                return html`
+                  <button key=${b.id} className=${'card' + (isSel ? ' card--selected' : '') + (dim ? ' card--dim' : '')}
+                    style=${{ '--buddy': b.color }} aria-pressed=${isSel} onClick=${() => pick(b)}>
+                    <${BuddyArt} id=${b.id} size=${120} />
+                    <span className="card-name">${b.name}</span>
+                    <span className="card-tag">${b.tag}</span>
+                  </button>`;
+              })}
+            </div>
+            <${Nav} onBack=${back} onNext=${next} showBack=${hasBack} />
+          </main>`;
+      }
+
+      const SWATCHES = ['#6BB0E5', '#F48FB1', '#7FB069', '#9B8FD1', '#E0A458', '#4DB6AC', '#FF8A65', '#BA68C8'];
+
+      function Colors({ back, advance }) {
+        const { stuff, update } = useMyStuff();
+        return html`
+          <main className="screen">
+            <h1 className="title">Make it yours</h1>
+            <p className="subtitle">Pick the colors you love. You can change these whenever you want.</p>
+            <div className="preview"><${BuddyArt} id=${stuff.buddy} size=${140} ring=${true} /></div>
+            <div className="swatches">
+              ${SWATCHES.map((c) => html`
+                <button key=${c} className=${'swatch' + (stuff.accent === c ? ' swatch--on' : '')} style=${{ background: c }}
+                  aria-label="Pick this color" aria-pressed=${stuff.accent === c} onClick=${() => update({ accent: c })} />`)}
+              <label className="swatch swatch--more" aria-label="More colors">+
+                <input type="color" value=${stuff.accent} onChange=${(e) => update({ accent: e.target.value })} />
+              </label>
+            </div>
+            <${Nav} onBack=${back} onNext=${() => advance('colors')} />
+          </main>`;
+      }
+
+      function Meet({ back, advance }) {
+        const { stuff, update } = useMyStuff();
+        const buddy = getBuddy(stuff.buddy);
+        const line = buddy.lines.meet;
+        return html`
+          <main className="screen screen--center">
+            <${BuddyArt} id=${buddy.id} size=${160} ring=${true} />
+            <div className="speech">
+              <p>${line}</p>
+              <button className="hear" onClick=${() => speak(line)} aria-label="Hear it">🔊</button>
+            </div>
+            <input className="text-input" type="text" placeholder="Type your name (or skip)" value=${stuff.name}
+              maxLength=${24} autoComplete="off" onChange=${(e) => update({ name: e.target.value })} />
+            <${Nav} onBack=${back} onNext=${() => advance('meet')} nextLabel=${stuff.name ? 'Next' : 'Skip'} />
+          </main>`;
+      }
+
+      function Homes({ back, advance }) {
+        const { stuff, refresh } = useMyStuff();
+        const buddy = getBuddy(stuff.buddy);
+        function edit(which, field, val) { setHome(which, { [field]: val }); refresh(); }
+        return html`
+          <main className="screen">
+            <h1 className="title">Your two homes</h1>
+            <p className="subtitle">${buddy.name}: “You can call them whatever feels right.”</p>
+            ${['home1', 'home2'].map((h, i) => html`
+              <div className="home-block" key=${h}>
+                <label className="field-label">Home ${i + 1}</label>
+                <input className="text-input" type="text"
+                  placeholder=${i === 0 ? "e.g. Mom's, Grandma's…" : "e.g. Dad's, the beach house…"}
+                  value=${stuff.homes[h].label} maxLength=${30} onChange=${(e) => edit(h, 'label', e.target.value)} />
+                <input className="text-input text-input--sub" type="text" placeholder="Add a grown-up's name (optional)"
+                  value=${stuff.homes[h].grownup} maxLength=${30} onChange=${(e) => edit(h, 'grownup', e.target.value)} />
+              </div>`)}
+            <${Nav} onBack=${back} onNext=${() => advance('homes')} nextLabel="All done" />
+          </main>`;
+      }
+
+      function Row({ children, onEdit }) {
+        return html`
+          <div className="review-row">
+            <div className="review-content">${children}</div>
+            <button className="pencil" onClick=${onEdit} aria-label="Edit this">✏️</button>
+          </div>`;
+      }
+
+      function Review({ go, editStep }) {
+        const { stuff } = useMyStuff();
+        const buddy = getBuddy(stuff.buddy);
+        const h1 = stuff.homes.home1.label || 'Home 1';
+        const h2 = stuff.homes.home2.label || 'Home 2';
+        return html`
+          <main className="screen">
+            <h1 className="title">Here's your setup!</h1>
+            <${Row} onEdit=${() => editStep('picker')}><${BuddyArt} id=${buddy.id} size=${44} /><span>Your buddy: <b>${buddy.name}</b></span></${Row}>
+            <${Row} onEdit=${() => editStep('colors')}><span className="dot" style=${{ background: stuff.accent }}></span><span>Your colors</span></${Row}>
+            <${Row} onEdit=${() => editStep('meet')}><span>Your name: <b>${stuff.name || '—'}</b></span></${Row}>
+            <${Row} onEdit=${() => editStep('homes')}><span>Your homes: <b>${h1}</b> and <b>${h2}</b></span></${Row}>
+            <button className="btn btn-primary btn-big" onClick=${() => go('allset')}>Looks good! →</button>
+          </main>`;
+      }
+
+      function AllSet({ go }) {
+        const { stuff, update } = useMyStuff();
+        const buddy = getBuddy(stuff.buddy);
+        const line = buddy.lines.allset(stuff.name);
+        useEffect(() => { update({ onboarded: true }); }, []);
+        return html`
+          <main className="screen screen--center">
+            <${BuddyArt} id=${buddy.id} size=${160} ring=${true} />
+            <div className="speech">
+              <p>${line}</p>
+              <button className="hear" onClick=${() => speak(line)} aria-label="Hear it">🔊</button>
+            </div>
+            <button className="btn btn-primary btn-big" onClick=${() => go('home')}>Go →</button>
+          </main>`;
+      }
+
+      function Home({ go }) {
+        const { stuff } = useMyStuff();
+        const buddy = getBuddy(stuff.buddy);
+        const line = buddy.lines.home(stuff.name);
+        return html`
+          <main className="screen">
+            <header className="home-header">
+              <${BuddyArt} id=${buddy.id} size=${72} />
+              <div className="speech speech--inline">
+                <p>${line}</p>
+                <button className="hear" onClick=${() => speak(line)} aria-label="Hear it">🔊</button>
+              </div>
+              <button className="gear" onClick=${() => go('settings')} aria-label="Settings">⚙️</button>
+            </header>
+            <div className="hub">
+              <button className="hub-tile" onClick=${() => go('pack')}><span className="hub-emoji">🎒</span><span>Pack</span></button>
+              <button className="hub-tile" onClick=${() => go('calendar')}><span className="hub-emoji">📅</span><span>Calendar</span></button>
+              <button className="hub-tile" onClick=${() => go('feelings')}><span className="hub-emoji">💛</span><span>Feelings</span></button>
+            </div>
+          </main>`;
+      }
+
+      function Settings({ go }) {
+        const { stuff, update, refresh, reset } = useMyStuff();
+        const [confirming, setConfirming] = useState(false);
+        function switchBuddy(b) { if (b.id === stuff.buddy) return; update({ buddy: b.id }); speak(b.lines.handoff(stuff.name)); }
+        function editHome(which, field, val) { setHome(which, { [field]: val }); refresh(); }
+        function doReset() { reset(); setConfirming(false); go('welcome'); }
+        return html`
+          <main className="screen">
+            <header className="settings-header">
+              <button className="btn btn-ghost" onClick=${() => go('home')} aria-label="Back to home">← Home</button>
+              <h1 className="title title--sm">My Stuff</h1>
+            </header>
+            <section className="set-block">
+              <h2 className="set-label">Your buddy</h2>
+              <div className="buddy-row">
+                ${BUDDIES.map((b) => html`
+                  <button key=${b.id} className=${'buddy-pick' + (stuff.buddy === b.id ? ' buddy-pick--on' : '')}
+                    aria-pressed=${stuff.buddy === b.id} onClick=${() => switchBuddy(b)}>
+                    <${BuddyArt} id=${b.id} size=${56} /><span>${b.name}</span>
+                  </button>`)}
+              </div>
+            </section>
+            <section className="set-block">
+              <h2 className="set-label">Your colors</h2>
+              <div className="swatches">
+                ${SWATCHES.map((c) => html`
+                  <button key=${c} className=${'swatch' + (stuff.accent === c ? ' swatch--on' : '')} style=${{ background: c }}
+                    aria-label="Pick this color" onClick=${() => update({ accent: c })} />`)}
+                <label className="swatch swatch--more" aria-label="More colors">+
+                  <input type="color" value=${stuff.accent} onChange=${(e) => update({ accent: e.target.value })} />
+                </label>
+              </div>
+            </section>
+            <section className="set-block">
+              <h2 className="set-label">Your name</h2>
+              <input className="text-input" type="text" value=${stuff.name} maxLength=${24} placeholder="Type your name"
+                onChange=${(e) => update({ name: e.target.value })} />
+            </section>
+            <section className="set-block">
+              <h2 className="set-label">Your homes</h2>
+              ${['home1', 'home2'].map((h, i) => html`
+                <div className="home-block" key=${h}>
+                  <input className="text-input" type="text" value=${stuff.homes[h].label} maxLength=${30}
+                    placeholder=${'Home ' + (i + 1)} onChange=${(e) => editHome(h, 'label', e.target.value)} />
+                  <input className="text-input text-input--sub" type="text" value=${stuff.homes[h].grownup} maxLength=${30}
+                    placeholder="Grown-up (optional)" onChange=${(e) => editHome(h, 'grownup', e.target.value)} />
+                </div>`)}
+            </section>
+            <section className="set-block">
+              ${!confirming
+                ? html`<button className="btn btn-danger" onClick=${() => setConfirming(true)}>Delete everything</button>`
+                : html`
+                  <div className="confirm">
+                    <p>This clears everything saved on this device. It can't be undone.</p>
+                    <div className="confirm-row">
+                      <button className="btn btn-ghost" onClick=${() => setConfirming(false)}>Keep my stuff</button>
+                      <button className="btn btn-danger" onClick=${doReset}>Yes, delete</button>
+                    </div>
+                  </div>`}
+            </section>
+          </main>`;
+      }
+
+      /* ---------------- Pack ---------------- */
+      function Pack({ go }) {
+        const { stuff, update } = useMyStuff();
+        const buddy = getBuddy(stuff.buddy);
+        const [text, setText] = useState('');
+        const list = stuff.packList || [];
+        const allDone = list.length > 0 && list.every((it) => it.done);
+        function toggle(id) { update({ packList: list.map((it) => it.id === id ? { ...it, done: !it.done } : it) }); }
+        function remove(id) { update({ packList: list.filter((it) => it.id !== id) }); }
+        function add() {
+          const t = text.trim();
+          if (!t) return;
+          update({ packList: [...list, { id: 'p' + Date.now(), text: t, done: false }] });
+          setText('');
+        }
+        return html`
+          <main className="screen">
+            <header className="settings-header">
+              <button className="btn btn-ghost" onClick=${() => go('home')} aria-label="Back to home">← Home</button>
+              <h1 className="title title--sm">Pack</h1>
+            </header>
+            <p className="subtitle">${allDone ? buddy.name + ' says: you packed everything! High five! 🙌' : "Let's get your things together — one at a time."}</p>
+            <div className="pack-list">
+              ${list.map((it) => html`
+                <div className=${'pack-item' + (it.done ? ' pack-item--done' : '')} key=${it.id}>
+                  <button className="pack-check" onClick=${() => toggle(it.id)} aria-label=${it.done ? 'Uncheck' : 'Check'}>${it.done ? '✅' : '⬜'}</button>
+                  <span className="pack-text">${it.text}</span>
+                  <button className="pack-del" onClick=${() => remove(it.id)} aria-label="Remove">×</button>
+                </div>`)}
+            </div>
+            <div className="pack-add">
+              <input className="text-input" type="text" placeholder="Add something to pack…" value=${text}
+                maxLength=${40} onChange=${(e) => setText(e.target.value)}
+                onKeyDown=${(e) => { if (e.key === 'Enter') add(); }} />
+              <button className="btn btn-primary" onClick=${add}>Add</button>
+            </div>
+          </main>`;
+      }
+
+      /* ---------------- Feelings (Puffy's weather — private, on-device, gentle) ---------------- */
+      const WEATHERS = [
+        { id: 'sunny', emoji: '☀️', label: 'Sunny', msg: "Sunny day! That's wonderful. Soak it up." },
+        { id: 'cloudy', emoji: '⛅', label: 'Cloudy', msg: "A little cloudy is okay. Clouds drift on by — you've got this." },
+        { id: 'rainy', emoji: '🌧️', label: 'Rainy', msg: "Rainy feelings are okay, and they pass. Be gentle with yourself today." },
+        { id: 'stormy', emoji: '⛈️', label: 'Stormy', msg: "Stormy is hard. Storms don't last forever — and you don't have to weather it alone." },
+      ];
+      function Feelings({ go }) {
+        const { stuff } = useMyStuff();
+        const buddy = getBuddy(stuff.buddy);
+        const [picked, setPicked] = useState(null);
+        const heavy = picked && (picked.id === 'rainy' || picked.id === 'stormy');
+        return html`
+          <main className="screen">
+            <header className="settings-header">
+              <button className="btn btn-ghost" onClick=${() => go('home')} aria-label="Back to home">← Home</button>
+              <h1 className="title title--sm">Feelings</h1>
+            </header>
+            <p className="subtitle">${buddy.name}: “How's your weather today?”</p>
+            <div className="weather-grid">
+              ${WEATHERS.map((w) => html`
+                <button key=${w.id} className=${'weather-btn' + (picked && picked.id === w.id ? ' weather-btn--on' : '')}
+                  onClick=${() => { setPicked(w); speak(w.msg); }}>
+                  <span className="weather-emoji">${w.emoji}</span>
+                  <span>${w.label}</span>
+                </button>`)}
+            </div>
+            ${picked ? html`
+              <div className="speech" style=${{ maxWidth: 'none' }}>
+                <p>${picked.msg}</p>
+                <button className="hear" onClick=${() => speak(picked.msg)} aria-label="Hear it">🔊</button>
+              </div>` : null}
+            ${heavy ? html`
+              <div className="offramp">
+                <p>If today feels really heavy, talking to a grown-up you trust can help — a parent, a teacher, a school counselor, or another adult who cares about you. You never have to carry big feelings by yourself.</p>
+              </div>` : null}
+            <p className="subtitle" style=${{ fontSize: '14px' }}>Whatever you pick stays right here on your device. It's just for you.</p>
+          </main>`;
+      }
+
+      /* ---------------- Calendar (kid's-eye: tap a day, pick which home) ---------------- */
+      function pad2(n) { return String(n).padStart(2, '0'); }
+      function isoFor(y, m, d) { return y + '-' + pad2(m + 1) + '-' + pad2(d); }
+      const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const DOW = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+      function Calendar({ go }) {
+        const { stuff, update } = useMyStuff();
+        const today = new Date();
+        const [view, setView] = useState({ y: today.getFullYear(), m: today.getMonth() });
+        const [selected, setSelected] = useState(null);
+        const h1label = stuff.homes.home1.label || 'Home 1';
+        const h2label = stuff.homes.home2.label || 'Home 2';
+        const cal = stuff.calendar || {};
+        const firstDow = new Date(view.y, view.m, 1).getDay();
+        const daysInMonth = new Date(view.y, view.m + 1, 0).getDate();
+        const todayIso = isoFor(today.getFullYear(), today.getMonth(), today.getDate());
+        const cells = [];
+        for (let i = 0; i < firstDow; i++) cells.push(null);
+        for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+        function prev() { setSelected(null); setView((v) => v.m === 0 ? { y: v.y - 1, m: 11 } : { y: v.y, m: v.m - 1 }); }
+        function next() { setSelected(null); setView((v) => v.m === 11 ? { y: v.y + 1, m: 0 } : { y: v.y, m: v.m + 1 }); }
+        function setHomeFor(iso, home) {
+          const cal2 = { ...cal };
+          if (home === null) delete cal2[iso]; else cal2[iso] = home;
+          update({ calendar: cal2 });
+        }
+        return html`
+          <main className="screen">
+            <header className="settings-header">
+              <button className="btn btn-ghost" onClick=${() => go('home')} aria-label="Back to home">← Home</button>
+              <h1 className="title title--sm">Calendar</h1>
+            </header>
+            <div className="cal-nav">
+              <button className="btn btn-ghost" onClick=${prev} aria-label="Previous month">←</button>
+              <span className="cal-month">${MONTHS[view.m]} ${view.y}</span>
+              <button className="btn btn-ghost" onClick=${next} aria-label="Next month">→</button>
+            </div>
+            <div className="cal-grid">
+              ${DOW.map((d, i) => html`<div className="cal-dow" key=${'dow' + i}>${d}</div>`)}
+              ${cells.map((d, i) => {
+                if (d === null) return html`<div key=${'e' + i}></div>`;
+                const iso = isoFor(view.y, view.m, d);
+                const home = cal[iso];
+                const isToday = iso === todayIso;
+                const isSel = iso === selected;
+                return html`
+                  <button key=${iso}
+                    className=${'cal-day' + (home ? ' cal-day--' + home : '') + (isToday ? ' cal-day--today' : '') + (isSel ? ' cal-day--sel' : '')}
+                    onClick=${() => setSelected(iso)}>${d}</button>`;
+              })}
+            </div>
+            <div className="cal-legend">
+              <span><span className="cal-dot cal-dot--home1"></span> ${h1label}</span>
+              <span><span className="cal-dot cal-dot--home2"></span> ${h2label}</span>
+            </div>
+            ${selected ? html`
+              <div className="cal-chooser">
+                <p className="cal-chooser-q">Which home that day?</p>
+                <div className="cal-chooser-btns">
+                  <button className="btn btn-primary" onClick=${() => setHomeFor(selected, 'home1')}>${h1label}</button>
+                  <button className="btn btn-primary" onClick=${() => setHomeFor(selected, 'home2')}>${h2label}</button>
+                </div>
+                <button className="btn btn-ghost" onClick=${() => setHomeFor(selected, null)}>Clear this day</button>
+              </div>`
+              : html`<p className="subtitle" style=${{ fontSize: '14px' }}>Tap a day to set which home you're at.</p>`}
+          </main>`;
+      }
+
+      /* ---------------- app (flow controller) ---------------- */
+      const ONBOARDING = ['welcome', 'picker', 'colors', 'meet', 'homes', 'review', 'allset'];
+      function App() {
+        const { stuff } = useMyStuff();
+        const [route, setRoute] = useState(stuff.onboarded ? 'home' : 'welcome');
+        const [history, setHistory] = useState([]);
+        const [returnTo, setReturnTo] = useState(null);
+        const go = useCallback((next, opts = {}) => {
+          setHistory((h) => [...h, route]);
+          if (opts.returnTo !== undefined) setReturnTo(opts.returnTo);
+          setRoute(next);
+        }, [route]);
+        const back = useCallback(() => {
+          if (history.length === 0) return;
+          setRoute(history[history.length - 1]);
+          setHistory(history.slice(0, -1));
+        }, [history]);
+        const advance = useCallback((fromRoute) => {
+          if (returnTo === 'review') { setReturnTo(null); go('review'); return; }
+          const i = ONBOARDING.indexOf(fromRoute);
+          if (i >= 0 && i < ONBOARDING.length - 1) go(ONBOARDING[i + 1]);
+        }, [returnTo, go]);
+        const editStep = useCallback((step) => go(step, { returnTo: 'review' }), [go]);
+        const p = { go, back, advance, editStep, hasBack: history.length > 0 };
+        let screen;
+        switch (route) {
+          case 'welcome':  screen = html`<${Welcome} ...${p} />`; break;
+          case 'picker':   screen = html`<${Picker} ...${p} />`; break;
+          case 'colors':   screen = html`<${Colors} ...${p} />`; break;
+          case 'meet':     screen = html`<${Meet} ...${p} />`; break;
+          case 'homes':    screen = html`<${Homes} ...${p} />`; break;
+          case 'review':   screen = html`<${Review} ...${p} />`; break;
+          case 'allset':   screen = html`<${AllSet} ...${p} />`; break;
+          case 'home':     screen = html`<${Home} ...${p} />`; break;
+          case 'settings': screen = html`<${Settings} ...${p} />`; break;
+          case 'calendar': screen = html`<${Calendar} ...${p} />`; break;
+          case 'feelings': screen = html`<${Feelings} ...${p} />`; break;
+          case 'pack':     screen = html`<${Pack} ...${p} />`; break;
+          default:         screen = html`<${Home} ...${p} />`;
+        }
+        return html`<div className="app-root" style=${{ '--accent': stuff.accent }}>${screen}</div>`;
+      }
+
+      ReactDOM.createRoot(document.getElementById('root')).render(
+        html`<${StrictMode}><${StuffProvider}><${App} /></${StuffProvider}></${StrictMode}>`
+      );
+    </script>
+  </body>
+</html>
